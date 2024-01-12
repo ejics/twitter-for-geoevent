@@ -24,8 +24,13 @@
 
 package com.esri.geoevent.transport.twitter;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -37,11 +42,33 @@ import com.esri.ges.transport.InboundTransportBase;
 import com.esri.ges.transport.TransportDefinition;
 import com.esri.ges.util.Validator;
 
-import twitter4j.FilterQuery;
-import twitter4j.RawStreamListener;
-import twitter4j.TwitterStream;
-import twitter4j.TwitterStreamFactory;
-import twitter4j.conf.ConfigurationBuilder;
+// import twitter4j.FilterQuery;
+// import twitter4j.RawStreamListener;
+// import twitter4j.TwitterStream;
+// import twitter4j.TwitterStreamFactory;
+// import twitter4j.conf.ConfigurationBuilder; 
+
+//API2.0
+import com.twitter.clientlib.ApiClient;
+import com.twitter.clientlib.ApiException;
+import com.twitter.clientlib.Configuration;
+import com.twitter.clientlib.JSON;
+import com.twitter.clientlib.auth.*;
+import com.twitter.clientlib.model.*;
+import com.twitter.clientlib.TwitterCredentialsOAuth2;
+import com.twitter.clientlib.TwitterCredentialsBearer;
+import com.twitter.clientlib.api.TwitterApi;
+import com.twitter.clientlib.api.TweetsApi;
+import java.io.InputStream;
+import com.google.common.reflect.TypeToken;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Set;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.time.OffsetDateTime;
 
 public class TwitterInboundTransport extends InboundTransportBase implements Runnable
 {
@@ -63,8 +90,11 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
   private int                       count     = -1;
 
   private String                    filterString;
-  private TwitterStream             twitterStream;
+  // private TwitterStream             twitterStream;
   private Thread                    thread    = null;
+
+  // For API2.0
+  // private Get2TweetsIdResponse result;
 
   @Override
   public synchronized void start()
@@ -94,28 +124,31 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
   {
     try
     {
-      if (this.twitterStream != null)
-      {
-        twitterStream.cleanUp();
-        twitterStream.shutdown();
-      }
+      // if (this.twitterStream != null)
+      // {
+      //   twitterStream.cleanUp();
+      //   twitterStream.shutdown();
+      // }
     }
     catch (Exception ex)
     {
       LOGGER.error("UNABLE_TO_CLOSE", ex);
     }
     setRunningState(RunningState.STOPPED);
-    LOGGER.debug("INBOUND_STOP");
+    // LOGGER.debug("INBOUND_STOP");
+    LOGGER.info("INBOUND_STOP");
   }
 
   @Override
   public void validate()
   {
-    LOGGER.debug("INBOUND_SKIP_VALIDATION");
+    // LOGGER.debug("INBOUND_SKIP_VALIDATION");
+    LOGGER.info("INBOUND_SKIP_VALIDATION");
   }
 
   public void applyProperties() throws Exception
   {
+    LOGGER.info(OAuth.CONSUMER_KEY + ":セット");
     if (getProperty(OAuth.CONSUMER_KEY).isValid())
     {
       String value = (String) getProperty(OAuth.CONSUMER_KEY).getValue();
@@ -124,7 +157,7 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
         consumerKey = cryptoService.decrypt(value);
       }
     }
-
+    LOGGER.info(OAuth.CONSUMER_SECRET + ":セット");
     if (getProperty(OAuth.CONSUMER_SECRET).isValid())
     {
       String value = (String) getProperty(OAuth.CONSUMER_SECRET).getValue();
@@ -133,7 +166,7 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
         consumerSecret = cryptoService.decrypt(value);
       }
     }
-
+    LOGGER.info(OAuth.ACCESS_TOKEN + ":セット");
     if (getProperty(OAuth.ACCESS_TOKEN).isValid())
     {
       String value = (String) getProperty(OAuth.ACCESS_TOKEN).getValue();
@@ -142,7 +175,7 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
         accessToken = cryptoService.decrypt(value);
       }
     }
-
+    LOGGER.info(OAuth.ACCESS_TOKEN_SECRET + ":セット");
     if (getProperty(OAuth.ACCESS_TOKEN_SECRET).isValid())
     {
       String value = (String) getProperty(OAuth.ACCESS_TOKEN_SECRET).getValue();
@@ -152,6 +185,7 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
       }
     }
 
+    LOGGER.info("follow:セット");
     StringBuilder paramsStr = new StringBuilder();
     if (getProperty("follow").isValid())
     {
@@ -170,6 +204,7 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
         }
       }
     }
+    LOGGER.info("track:セット");
     if (getProperty("track").isValid())
     {
       String value = (String) getProperty("track").getValue();
@@ -188,10 +223,11 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
         }
       }
     }
+    LOGGER.info("locations:セット");
     if (getProperty("locations").isValid())
     {
       String value = (String) getProperty("locations").getValue();
-      if (value.length() > 0)
+      if (value != null && value.length() > 0)
       {
         if (paramsStr.length() > 0)
         {
@@ -247,6 +283,10 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
 
   }
 
+  // reference URL is https://dev.to/twitterdev/a-guide-to-working-with-the-twitter-api-v2-in-java-using-twitter-api-java-sdk-c8n.
+  // reference URL2   https://github.com/twitterdev/twitter-api-java-sdk/blob/main/docs/TweetsApi.md#samplestream
+  // reference URL3   https://zenn.dev/lamrongol/articles/c006704ba525dc
+  // reference URL4   https://javadoc.io/doc/com.twitter/twitter-api-java-sdk/2.0.2/allclasses.html
   private void receiveData()
   {
     try
@@ -254,49 +294,127 @@ public class TwitterInboundTransport extends InboundTransportBase implements Run
       applyProperties();
       setRunningState(RunningState.STARTED);
 
-      ConfigurationBuilder cb = new ConfigurationBuilder();
-      cb.setDebugEnabled(true);
-      cb.setOAuthConsumerKey(consumerKey);
-      cb.setOAuthConsumerSecret(consumerSecret);
-      cb.setOAuthAccessToken(accessToken);
-      cb.setOAuthAccessTokenSecret(accessTokenSecret);
-      twitterStream = new TwitterStreamFactory(cb.build()).getInstance();
+      // API 1.1
+      // ConfigurationBuilder cb = new ConfigurationBuilder();
+      // cb.setDebugEnabled(true);
+      // cb.setOAuthConsumerKey(consumerKey);
+      // cb.setOAuthConsumerSecret(consumerSecret);
+      // cb.setOAuthAccessToken(accessToken);
+      // cb.setOAuthAccessTokenSecret(accessTokenSecret);
+      // twitterStream = new TwitterStreamFactory(cb.build()).getInstance();
 
-      RawStreamListener rl = new RawStreamListener()
-        {
+      // For API 2.0
+      // https://github.com/twitterdev/twitter-api-java-sdk?tab=readme-ov-file#maven-users
+      TwitterApi apiInstance = new TwitterApi(new TwitterCredentialsOAuth2(
+      consumerKey,
+      consumerSecret,
+      accessToken,
+      accessTokenSecret)); 
 
-          @Override
-          public void onException(Exception ex)
-          {
-            LOGGER.error("INBOUND_TRANSPORT_RAW_STREAM_LISTERNER_EXCEPTION", ex.getMessage());
+      // String query = "covid -is:retweet";
+      // int maxResults = 100;
+      // TweetSearchResponse result = apiInstance.tweets()
+      // .tweetsRecentSearch(query, null, null, null, null, maxResults,
+      //           null, null, null, null, null, null, null, null, null);     
+
+      Set<String> tweetFields = new HashSet<>(Arrays.asList("id", "author_id", "created_at", "lang", "source", "text", "entities", "public_metrics")); // Set<String> | A comma separated list of Tweet fields to display.
+      Set<String> expansions = new HashSet<>(Arrays.asList()); // Set<String> | A comma separated list of fields to expand.
+      Set<String> mediaFields = new HashSet<>(Arrays.asList()); // Set<String> | A comma separated list of Media fields to display.
+      Set<String> pollFields = new HashSet<>(Arrays.asList()); // Set<String> | A comma separated list of Poll fields to display.
+      Set<String> userFields = new HashSet<>(Arrays.asList()); // Set<String> | A comma separated list of User fields to display.
+      Set<String> placeFields = new HashSet<>(Arrays.asList()); // Set<String> | A comma separated list of Place fields to display.
+      try {
+        AddOrDeleteRulesRequest addOrDeleteRulesRequest = new AddOrDeleteRulesRequest();
+        // Boolean dryRun = true;
+        AddOrDeleteRulesResponse rulesResponse = apiInstance.tweets().addOrDeleteRules(addOrDeleteRulesRequest)
+            // .dryRun(dryRun)
+            .execute();
+        LOGGER.info("rulesResponse:"+rulesResponse);
+
+        InputStream result = apiInstance.tweets().sampleStream()
+            .tweetFields(tweetFields)
+            .expansions(expansions)
+            .mediaFields(mediaFields)
+            .pollFields(pollFields)
+            .userFields(userFields)
+            .placeFields(placeFields)
+            .execute();
+
+        try {
+          // JSON json = new JSON();
+          Type localVarReturnType = new TypeToken<StreamingTweetResponse>() {}.getType();
+          BufferedReader reader = new BufferedReader(new InputStreamReader(result, "UTF-8"));
+          String line = reader.readLine();
+          while (line != null) {
+            if (line.isEmpty()) {
+              System.out.println("==> Empty line");
+              line = reader.readLine();
+              continue;
+            }
+            //System.out.println(response != null ? response.toString() : "Null object");
+            try {
+              StreamingTweetResponse response = JSON.getGson().fromJson(line, localVarReturnType);
+              if (response != null) {
+                Tweet tweet = response.getData();
+                //処理
+                LOGGER.info("receice data:"+tweet.getText());
+                receive(tweet.getText());
+              }
+            } catch (IllegalArgumentException e) {//IllegalArgumentExceptionが起きてもプログラムが停止しないように
+              System.out.println("IllegalArgumentException: " + line);
+              e.printStackTrace();
+            }
+            line = reader.readLine();
           }
+        } catch (Exception e) {
+          e.printStackTrace();
+          System.out.println(e);
+        }
+      } catch (ApiException e) {
+        LOGGER.error("Exception when calling TweetsApi#sampleStream");
+        LOGGER.error("Status code: " + e.getCode());
+        LOGGER.error("Reason: " + e.getResponseBody());
+        LOGGER.error("Response headers: " + e.getResponseHeaders());
+        e.printStackTrace();
+      }
 
-          @Override
-          public void onMessage(String rawString)
-          {
-            receive(rawString);
-          }
-        };
 
-      FilterQuery fq = new FilterQuery();
+      // API 1.0
+      // RawStreamListener rl = new RawStreamListener()
+      //   {
 
-      String keywords[] = tracks;
+      //     @Override
+      //     public void onException(Exception ex)
+      //     {
+      //       LOGGER.error("INBOUND_TRANSPORT_RAW_STREAM_LISTERNER_EXCEPTION", ex.getMessage());
+      //     }
 
-      if (follows != null && follows.length > 0)
-        fq.follow(follows);
-      else if (keywords != null && keywords.length > 0)
-        fq.track(keywords);
-      else if (locations != null)
-        fq.locations(locations);
-      else
-        throw new Exception("INBOUND_TRANSPORT_NOFILTER_ERROR");
+      //     @Override
+      //     public void onMessage(String rawString)
+      //     {
+      //       receive(rawString);
+      //     }
+      //   };
 
-      fq.count(count);
+      // FilterQuery fq = new FilterQuery();
+
+      // String keywords[] = tracks;
+
+      // if (follows != null && follows.length > 0)
+      //   fq.follow(follows);
+      // else if (keywords != null && keywords.length > 0)
+      //   fq.track(keywords);
+      // else if (locations != null)
+      //   fq.locations(locations);
+      // else
+      //   throw new Exception("INBOUND_TRANSPORT_NOFILTER_ERROR");
+
+      // fq.count(count);
 
       LOGGER.info("INBOUND_TRANSPORT_FILTER", filterString);
 
-      twitterStream.addListener(rl);
-      twitterStream.filter(fq);
+      // twitterStream.addListener(rl);
+      // twitterStream.filter(fq);
 
     }
     catch (Throwable ex)

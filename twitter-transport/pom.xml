@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>com.esri.geoevent.parent</groupId>
 		<artifactId>twitter</artifactId>
-		<version>10.6.0</version>
+		<version>11.1.0</version>
 	</parent>
 	<groupId>com.esri.geoevent.transport</groupId>
 	<artifactId>twitter-transport</artifactId>
@@ -17,6 +17,7 @@
 			<groupId>com.esri.geoevent.transport</groupId>
 			<artifactId>http-transport</artifactId>
 			<version>${project.version}</version>
+			<!-- <version>10.6.0</version> -->
 			<scope>system</scope>
 			<systemPath>${project.basedir}/lib/http-transport-${project.version}.jar</systemPath>
 		</dependency>
@@ -29,12 +30,40 @@
 			<groupId>org.twitter4j</groupId>
 			<artifactId>twitter4j-core</artifactId>
 			<version>4.0.3</version>
+			<!--  <version>4.0.7</version>  -->
 		</dependency>
 		<dependency>
 			<groupId>org.twitter4j</groupId>
 			<artifactId>twitter4j-stream</artifactId>
 			<version>4.0.3</version>
+			<!--  <version>4.0.7</version>  -->
 		</dependency>
+		<dependency>
+			<groupId>com.twitter</groupId>
+			<artifactId>twitter-api-java-sdk</artifactId>
+			<version>2.0.3</version>
+		</dependency>
+		<!--
+		<dependency>
+			<groupId>org.twitter4j-v2</groupId>
+			<artifactId>twitter4j-v2</artifactId>
+			<version>1.4.2</version>
+		</dependency>
+		-->
+		<!--
+		<dependency>
+			<groupId>org.twitter4j-v2</groupId>
+			<artifactId>twitter4j-v2</artifactId>
+			<version>1.4.2</version>
+			-->
+			<!-- This is the register command! >> mvn org.apache.maven.plugins:maven-install-plugin:2.5.2:install-file  -Dfile=C:/archive/ESRI/github/twitter4j-v2/twitter4j-v2-support/build/libs/twitter4j-v2-support-1.4.2.jar -DgroupId=org.twitter4j-v2 -DartifactId=twitter4j-v2 -Dversion=1.4.2 -Dpackaging=jar   -->
+			<!--
+			<scope>system</scope>
+			<systemPath>C:/archive/ESRI/github/twitter4j-v2/twitter4j-v2-support/build/libs/twitter4j-v2-support-1.4.2.jar</systemPath>
+			-->
+			<!--
+		</dependency>		
+		-->
 <!-- 		<dependency> -->
 <!-- 			<groupId>org.twitter4j</groupId> -->
 <!-- 			<artifactId>twitter4j-async</artifactId> -->
@@ -61,7 +90,17 @@
 						</Embed-Dependency>
 						<Embed-Transitive>true</Embed-Transitive>
 					</instructions>
+					<!-- <file>C:/archive/ESRI/github/twitter4j-v2/twitter4j-v2-support/build/libs/twitter4j-v2-support-1.4.2.jar</file>  -->
 				</configuration>
+				<!-->
+				<configuration>
+					<file>C:/archive/ESRI/github/twitter4j-v2/twitter4j-v2-support/build/libs/twitter4j-v2-support-1.4.2.jar</file>
+					<groupId>org.twitter4j-v2</groupId>
+					<artifactId>twitter4j-v2</artifactId>
+					<version>1.4.2</version>
+					<packaging>jar</packaging>
+          		</configuration>
+				-->
 			</plugin>
 		</plugins>
 	</build>

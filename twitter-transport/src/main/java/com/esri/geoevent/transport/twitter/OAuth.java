@@ -202,7 +202,8 @@ public class OAuth
     String realm = null;
     String authorizationHeader = generateAuthorizationHeader(httpMethod, clientUrl, params, nonce, timestamp, accessToken, accessTokenSecret, consumerKey, consumerSecret, realm);
 
-    LOGGER.debug(authorizationHeader);
+    // LOGGER.debug(authorizationHeader);
+    LOGGER.info(authorizationHeader);
     return authorizationHeader;
   }
 
@@ -403,9 +404,11 @@ public class OAuth
     base.append(encode(encodeParameters(signatureParams, "&", false)));
     String oauthBaseString = base.toString();
     // logger.debug("OAuth base string: ", oauthBaseString);
+    LOGGER.info("OAuth base string: ", oauthBaseString);
     SecretKeySpec secretKeySpec = null;
     String signature = generateSignature(oauthBaseString, token, tokenSecret, consumerSecret, secretKeySpec);
     // logger.debug("OAuth signature: ", signature);
+    LOGGER.info("OAuth signature: ", signature);
 
     headerParams.put(OAuth.OAUTH_SIGNATURE, signature);
 
